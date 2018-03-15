@@ -38,15 +38,9 @@
 
 
 <br>
-[<img src="https://github.com/F7D/AntennaPod/blob/develop/screen/1.PNG"
-      alt="welcome"
-      height="100%">](https://github.com/F7D/AntennaPod)
-[<img src="https://github.com/F7D/AntennaPod/blob/develop/screen/2.PNG"
-      alt="welcome"
-      height="100%">](https://github.com/F7D/AntennaPod)
-[<img src="https://github.com/F7D/AntennaPod/blob/develop/screen/3.PNG"
-      alt="welcome"
-      height="100%">](https://github.com/F7D/AntennaPod)
+<img src="https://github.com/F7D/AntennaPod/blob/develop/screen/1.PNG" alt="welcome" height="100%"> <img src="https://github.com/F7D/AntennaPod/blob/develop/screen/2.PNG" alt="welcome" height="100%"> <img src="https://github.com/F7D/AntennaPod/blob/develop/screen/3.PNG" alt="welcome" height="100%">
+      
+      
 	 <br> 
 This is the official repository of AntennaPod, the easy-to-use, flexible and open-source podcast manager for Android.
 
