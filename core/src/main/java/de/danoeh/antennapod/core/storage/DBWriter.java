@@ -23,9 +23,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import de.danoeh.antennapod.core.ClientConfig;
+import de.danoeh.antennapod.core.R;
 import de.danoeh.antennapod.core.asynctask.FlattrClickWorker;
 import de.danoeh.antennapod.core.event.FavoritesEvent;
 import de.danoeh.antennapod.core.event.FeedItemEvent;
+import de.danoeh.antennapod.core.event.MessageEvent;
 import de.danoeh.antennapod.core.event.QueueEvent;
 import de.danoeh.antennapod.core.feed.EventDistributor;
 import de.danoeh.antennapod.core.feed.Feed;
@@ -84,12 +86,13 @@ public class DBWriter {
             if (media != null) {
                 Log.i(TAG, String.format("Requested to delete FeedMedia [id=%d, title=%s, downloaded=%s",
                         media.getId(), media.getEpisodeTitle(), String.valueOf(media.isDownloaded())));
-                boolean result = false;
                 if (media.isDownloaded()) {
                     // delete downloaded media file
                     File mediaFile = new File(media.getFile_url());
-                    if (mediaFile.exists()) {
-                        result = mediaFile.delete();
+                    if (mediaFile.exists() && !mediaFile.delete()) {
+                        MessageEvent evt = new MessageEvent(context.getString(R.string.delete_failed));
+                        EventBus.getDefault().post(evt);
+                        return;
                     }
                     media.setDownloaded(false);
                     media.setFile_url(null);
@@ -129,7 +132,6 @@ public class DBWriter {
                         GpodnetPreferences.enqueueEpisodeAction(action);
                     }
                 }
-                Log.d(TAG, "Deleting File. Result: " + result);
                 EventBus.getDefault().post(FeedItemEvent.deletedMedia(Collections.singletonList(media.getItem())));
                 EventDistributor.getInstance().sendUnreadItemsUpdateBroadcast();
             }
@@ -380,8 +382,8 @@ public class DBWriter {
                                 // add item to either front ot back of queue
                                 boolean addToFront = UserPreferences.enqueueAtFront();
                                 if (addToFront) {
-                                    queue.add(0 + i, item);
-                                    events.add(QueueEvent.added(item, 0 + i));
+                                    queue.add(i, item);
+                                    events.add(QueueEvent.added(item, i));
                                 } else {
                                     queue.add(item);
                                     events.add(QueueEvent.added(item, queue.size() - 1));
@@ -836,9 +838,9 @@ public class DBWriter {
      *
      * @param startFlattrClickWorker true if FlattrClickWorker should be started after the FlattrStatus has been saved
      */
-    public static Future<?> setFeedItemFlattrStatus(final Context context,
-                                                    final FeedItem item,
-                                                    final boolean startFlattrClickWorker) {
+    private static Future<?> setFeedItemFlattrStatus(final Context context,
+                                                     final FeedItem item,
+                                                     final boolean startFlattrClickWorker) {
         return dbExec.submit(() -> {
             PodDBAdapter adapter = PodDBAdapter.getInstance();
             adapter.open();

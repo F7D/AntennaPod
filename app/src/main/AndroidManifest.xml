@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="de.danoeh.antennapod"
-    android:versionCode="1060203"
-    android:versionName="1.6.2.3">
+    android:installLocation="auto"
+    android:versionCode="1060405"
+    android:versionName="1.6.4.5">
     <!--
       Version code schema:
       "1.2.3-SNAPSHOT" -> 1020300
@@ -96,15 +97,6 @@
             android:launchMode="singleInstance"/>
 
         <activity
-            android:name=".activity.PreferenceActivityGingerbread"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:label="@string/settings_label">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="de.danoeh.antennapod.activity.MainActivity"/>
-        </activity>
-
-        <activity
             android:name=".activity.PreferenceActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:label="@string/settings_label">
@@ -174,6 +166,13 @@
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="de.danoeh.antennapod.activity.PreferenceActivity"/>
+        </activity>
+        <activity
+                android:name=".activity.ImportExportActivity"
+                android:label="@string/import_export">
+            <meta-data
+                    android:name="android.support.PARENT_ACTIVITY"
+                    android:value="de.danoeh.antennapod.activity.PreferenceActivity"/>
         </activity>
         <activity
             android:name=".activity.OpmlImportFromPathActivity"
@@ -370,6 +369,16 @@
                     android:scheme="package"/>
             </intent-filter>
         </receiver>
+
+        <provider
+            android:authorities="@string/provider_authority"
+            android:name="android.support.v4.content.FileProvider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths"/>
+        </provider>
 
         <meta-data
             android:name="de.danoeh.antennapod.core.glide.ApGlideModule"

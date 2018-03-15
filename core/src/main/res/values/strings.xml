@@ -5,6 +5,7 @@
 
     <!-- Activitiy and fragment titles -->
     <string name="app_name" translate="false">AntennaPod</string>
+    <string name="provider_authority" translate="false">de.danoeh.antennapod.provider</string>
     <string name="feeds_label">Feeds</string>
     <string name="statistics_label">Statistics</string>
     <string name="add_feed_label">Add Podcast</string>
@@ -13,7 +14,6 @@
     <string name="favorite_episodes_label">Favorites</string>
     <string name="new_label">New</string>
     <string name="settings_label">Settings</string>
-    <string name="add_new_feed_label">Add Podcast</string>
     <string name="downloads_label">Downloads</string>
     <string name="downloads_running_label">Running</string>
     <string name="downloads_completed_label">Completed</string>
@@ -126,6 +126,7 @@
     <string name="remove_feed_label">Remove Podcast</string>
     <string name="share_label">Share&#8230;</string>
     <string name="share_link_label">Share Link</string>
+    <string name="share_file_label">Share File</string>
     <string name="share_link_with_position_label">Share Link with Position</string>
     <string name="share_feed_url_label">Share Feed URL</string>
     <string name="share_item_url_label">Share Episode File URL</string>
@@ -155,6 +156,7 @@
     <string name="stream_label">Stream</string>
     <string name="remove_label">Remove</string>
     <string name="delete_label">Delete</string>
+    <string name="delete_failed">Unable to delete file. Rebooting the device could help.</string>
     <string name="remove_episode_lable">Remove Episode</string>
     <string name="marked_as_seen_label">Marked as seen</string>
     <string name="mark_read_label">Mark as played</string>
@@ -319,6 +321,8 @@
     <string name="pref_smart_mark_as_played_title">Smart Mark as Played</string>
     <string name="pref_skip_keeps_episodes_sum">Keep episodes when they are skipped</string>
     <string name="pref_skip_keeps_episodes_title">Keep Skipped Episodes</string>
+    <string name="pref_favorite_keeps_episodes_sum">Keep episodes when they are marked Favorite</string>
+    <string name="pref_favorite_keeps_episodes_title">Keep Favorite Episodes</string>
     <string name="playback_pref">Playback</string>
     <string name="network_pref">Network</string>
     <string name="pref_autoUpdateIntervallOrTime_title">Update Interval or Time of Day</string>
@@ -362,6 +366,8 @@
     <string name="pref_automatic_download_sum">Configure the automatic download of episodes.</string>
     <string name="pref_autodl_wifi_filter_title">Enable Wi-Fi filter</string>
     <string name="pref_autodl_wifi_filter_sum">Allow automatic download only for selected Wi-Fi networks.</string>
+    <string name="pref_autodl_allow_on_mobile_title">Download on mobile connection</string>
+    <string name="pref_autodl_allow_on_mobile_sum">Allow automatic download over the mobile data connection.</string>
     <string name="pref_automatic_download_on_battery_title">Download when not charging</string>
     <string name="pref_automatic_download_on_battery_sum">Allow automatic download when the battery is not charging</string>
     <string name="pref_parallel_downloads_title">Parallel Downloads</string>
@@ -429,7 +435,7 @@
     <string name="pref_cast_title">Chromecast support</string>
     <string name="pref_cast_message_play_flavor">Enable support for remote media playback on Cast devices (such as Chromecast, Audio Speakers or Android TV)</string>
     <string name="pref_cast_message_free_flavor">Chromecast requires third party proprietary libraries that are disabled in this version of AntennaPod</string>
-    <string name="pref_enqueue_downloaded_title">Enqueue Dowloaded</string>
+    <string name="pref_enqueue_downloaded_title">Enqueue Downloaded</string>
     <string name="pref_enqueue_downloaded_summary">Add downloaded episodes to the queue</string>
 
     <!-- Auto-Flattr dialog -->
@@ -655,6 +661,15 @@
     <string name="proxy_host_invalid_error">Host is not a valid IP address or domain</string>
     <string name="proxy_port_invalid_error">Port not valid</string>
 
+    <!-- Database import/export -->
+    <string name="import_export">Database import/export</string>
+    <string name="import_export_warning">This experimental function can be used to transfer your subscriptions and played episodes to another device.\n\nExported databases can only be imported when using the same version of AntennaPod. Otherwise, this function will lead to unexpected behavior.\n\nAfter importing, episodes might be displayed as downloaded even though they are not. Just press the play button of the episodes to make AntennaPod detect this.</string>
+    <string name="label_import">Import</string>
+    <string name="label_export">Export</string>
+    <string name="import_select_file">Select file to import</string>
+    <string name="export_ok">Export successful.</string>
+    <string name="import_ok">Import successful.\n\nPlease press OK to restart AntennaPod</string>
+
     <!-- Casting -->
     <string name="cast_media_route_menu_title">Play on&#8230;</string>
     <string name="cast_disconnect_label">Disconnect the cast session</string>
@@ -671,4 +686,29 @@
     <string name="cast_failed_seek">Failed to seek to the new position on the cast device</string>
     <string name="cast_failed_receiver_player_error">Receiver player has encountered a severe error</string>
     <string name="cast_failed_media_error_skipping">Error playing media. Skipping&#8230;</string>
+
+
+    <!-- welcome -->
+    <string name="title_activity_welcome">Home Screen</string>
+    <string name="next">NEXT</string>
+    <string name="skip">SKIP</string>
+    <string name="start">Start Now</string>
+
+    <string name="slide_1_title">AntennaPod (Beta)</string>
+    <string name="slide_1_app_version">Version 1.6.4.5</string>
+    <string name="slide_1_text">Version 1.6.4.5</string>
+    <string name="slide_1_text1">* Fixes issues on Android Oreo</string>
+    <string name="slide_1_text2">* Avoids duplicate chapters</string>
+    <string name="slide_1_text3">* Beta: Database import And export</string>
+
+    <string name="slide_2_title">4.6</string>
+    <string name="slide_2_text1">Reviews!</string>
+    <string name="slide_2_text2">Offered By:\n\n AntennaPod\n\n \nDeveloper:\n\n Visit website antennapod.org \n\n Email: \n\n antennapod@googlegroups.com </string>
+
+    <string name="slide_3_title">Group Discussion</string>
+    <string name="slide_3_text">Make group of best buddies and have fun!</string>
+
+    <string name="home_title">Welcome to AntennaPod</string>
+    <string name="home_text">make friends and have fun.</string>
+
 </resources>

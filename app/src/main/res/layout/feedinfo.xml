@@ -249,10 +249,7 @@
                     app:layout_row="1"
                     app:layout_column="0"
                     android:text="@string/password_label"
-                    android:textColor="?android:attr/textColorPrimary"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true"
-                    android:cursorVisible="true"/>
+                    android:textColor="?android:attr/textColorPrimary" />
 
                 <EditText
                     android:id="@+id/etxtPassword"
@@ -261,7 +258,10 @@
                     app:layout_row="1"
                     app:layout_column="1"
                     android:hint="@string/password_label"
-                    android:inputType="textPassword"/>
+                    android:inputType="textPassword"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:cursorVisible="true"/>
 
             </android.support.v7.widget.GridLayout>
 
@@ -313,13 +313,11 @@
                 <RadioButton android:id="@+id/radio_filter_include"
                              android:layout_width="wrap_content"
                              android:layout_height="wrap_content"
-                             android:text="@string/episode_filters_include"
-                             android:onClick="onRadioButtonClicked"/>
+                             android:text="@string/episode_filters_include" />
                 <RadioButton android:id="@+id/radio_filter_exclude"
                              android:layout_width="wrap_content"
                              android:layout_height="wrap_content"
-                             android:text="@string/episode_filters_exclude"
-                             android:onClick="onRadioButtonClicked"/>
+                             android:text="@string/episode_filters_exclude" />
             </RadioGroup>
 
             <EditText

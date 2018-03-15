@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.net.wifi.WifiConfiguration;
@@ -23,7 +24,7 @@ import android.preference.PreferenceManager;
 import android.preference.PreferenceScreen;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AlertDialog;
 import android.text.Editable;
 import android.text.Html;
@@ -37,6 +38,7 @@ import android.widget.Toast;
 
 import com.afollestad.materialdialogs.MaterialDialog;
 
+import de.danoeh.antennapod.activity.ImportExportActivity;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.io.File;
@@ -44,7 +46,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -55,8 +56,6 @@ import de.danoeh.antennapod.activity.AboutActivity;
 import de.danoeh.antennapod.activity.DirectoryChooserActivity;
 import de.danoeh.antennapod.activity.MainActivity;
 import de.danoeh.antennapod.activity.MediaplayerActivity;
-import de.danoeh.antennapod.activity.PreferenceActivity;
-import de.danoeh.antennapod.activity.PreferenceActivityGingerbread;
 import de.danoeh.antennapod.activity.StatisticsActivity;
 import de.danoeh.antennapod.asynctask.ExportWorker;
 import de.danoeh.antennapod.core.export.ExportWriter;
@@ -65,11 +64,10 @@ import de.danoeh.antennapod.core.export.opml.OpmlWriter;
 import de.danoeh.antennapod.core.preferences.GpodnetPreferences;
 import de.danoeh.antennapod.core.preferences.UserPreferences;
 import de.danoeh.antennapod.core.service.GpodnetSyncService;
-import de.danoeh.antennapod.core.util.Converter;
-import de.danoeh.antennapod.core.util.StorageUtils;
 import de.danoeh.antennapod.core.util.flattr.FlattrUtils;
 import de.danoeh.antennapod.dialog.AuthenticationDialog;
 import de.danoeh.antennapod.dialog.AutoFlattrPreferenceDialog;
+import de.danoeh.antennapod.dialog.ChooseDataFolderDialog;
 import de.danoeh.antennapod.dialog.GpodnetSetHostnameDialog;
 import de.danoeh.antennapod.dialog.ProxyDialog;
 import de.danoeh.antennapod.dialog.VariableSpeedDialog;
@@ -93,12 +91,13 @@ public class PreferenceController implements SharedPreferences.OnSharedPreferenc
     private static final String PREF_OPML_EXPORT = "prefOpmlExport";
     private static final String PREF_HTML_EXPORT = "prefHtmlExport";
     private static final String STATISTICS = "statistics";
+    private static final String IMPORT_EXPORT = "importExport";
     private static final String PREF_ABOUT = "prefAbout";
     private static final String PREF_CHOOSE_DATA_DIR = "prefChooseDataDir";
     private static final String AUTO_DL_PREF_SCREEN = "prefAutoDownloadSettings";
     private static final String PREF_PLAYBACK_SPEED_LAUNCHER = "prefPlaybackSpeedLauncher";
-    public static final String PREF_PLAYBACK_REWIND_DELTA_LAUNCHER = "prefPlaybackRewindDeltaLauncher";
-    public static final String PREF_PLAYBACK_FAST_FORWARD_DELTA_LAUNCHER = "prefPlaybackFastForwardDeltaLauncher";
+    private static final String PREF_PLAYBACK_REWIND_DELTA_LAUNCHER = "prefPlaybackRewindDeltaLauncher";
+    private static final String PREF_PLAYBACK_FAST_FORWARD_DELTA_LAUNCHER = "prefPlaybackFastForwardDeltaLauncher";
     private static final String PREF_GPODNET_LOGIN = "pref_gpodnet_authenticate";
     private static final String PREF_GPODNET_SETLOGIN_INFORMATION = "pref_gpodnet_setlogin_information";
     private static final String PREF_GPODNET_SYNC = "pref_gpodnet_sync";
@@ -132,19 +131,6 @@ public class PreferenceController implements SharedPreferences.OnSharedPreferenc
             .registerOnSharedPreferenceChangeListener(this);
     }
 
-    /**
-     * Returns the preference activity that should be used on this device.
-     *
-     * @return PreferenceActivity if the API level is greater than 10, PreferenceActivityGingerbread otherwise.
-     */
-    public static Class<? extends Activity> getPreferenceActivity() {
-        if (Build.VERSION.SDK_INT > 10) {
-            return PreferenceActivity.class;
-        } else {
-            return PreferenceActivityGingerbread.class;
-        }
-    }
-
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         if(key.equals(UserPreferences.PREF_SONIC)) {
@@ -158,7 +144,7 @@ public class PreferenceController implements SharedPreferences.OnSharedPreferenc
     public void onCreate() {
         final Activity activity = ui.getActivity();
 
-        if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
             // disable expanded notification option on unsupported android versions
             ui.findPreference(PreferenceController.PREF_EXPANDED_NOTIFICATION).setEnabled(false);
             ui.findPreference(PreferenceController.PREF_EXPANDED_NOTIFICATION).setOnPreferenceClickListener(
@@ -186,6 +172,12 @@ public class PreferenceController implements SharedPreferences.OnSharedPreferenc
         ui.findPreference(PreferenceController.STATISTICS).setOnPreferenceClickListener(
                 preference -> {
                     activity.startActivity(new Intent(activity, StatisticsActivity.class));
+                    return true;
+                }
+        );
+        ui.findPreference(PreferenceController.IMPORT_EXPORT).setOnPreferenceClickListener(
+                preference -> {
+                    activity.startActivity(new Intent(activity, ImportExportActivity.class));
                     return true;
                 }
         );
@@ -441,14 +433,25 @@ public class PreferenceController implements SharedPreferences.OnSharedPreferenc
             return true;
         });
         ui.findPreference(PREF_SEND_CRASH_REPORT).setOnPreferenceClickListener(preference -> {
+            Context context = ui.getActivity().getApplicationContext();
             Intent emailIntent = new Intent(Intent.ACTION_SEND);
             emailIntent.setType("text/plain");
             emailIntent.putExtra(Intent.EXTRA_EMAIL, new String[]{"Martin.Fietz@gmail.com"});
             emailIntent.putExtra(Intent.EXTRA_SUBJECT, "AntennaPod Crash Report");
             emailIntent.putExtra(Intent.EXTRA_TEXT, "Please describe what you were doing when the app crashed");
             // the attachment
-            emailIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(CrashReportWriter.getFile()));
+            Uri fileUri = FileProvider.getUriForFile(context, context.getString(R.string.provider_authority),
+                    CrashReportWriter.getFile());
+            emailIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
+            emailIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             String intentTitle = ui.getActivity().getString(R.string.send_email);
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
+                List<ResolveInfo> resInfoList = context.getPackageManager().queryIntentActivities(emailIntent, PackageManager.MATCH_DEFAULT_ONLY);
+                for (ResolveInfo resolveInfo : resInfoList) {
+                    String packageName = resolveInfo.activityInfo.packageName;
+                    context.grantUriPermission(packageName, fileUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                }
+            }
             ui.getActivity().startActivity(Intent.createChooser(emailIntent, intentTitle));
             return true;
         });
@@ -475,12 +478,21 @@ public class PreferenceController implements SharedPreferences.OnSharedPreferenc
                     String message = context.getString(R.string.opml_export_success_sum) + output.toString();
                     alert.setMessage(message);
                     alert.setPositiveButton(R.string.send_label, (dialog, which) -> {
-                        Uri outputUri = Uri.fromFile(output);
+                        Uri fileUri = FileProvider.getUriForFile(context.getApplicationContext(),
+                                "de.danoeh.antennapod.provider", output);
                         Intent sendIntent = new Intent(Intent.ACTION_SEND);
                         sendIntent.putExtra(Intent.EXTRA_SUBJECT,
                                 context.getResources().getText(R.string.opml_export_label));
-                        sendIntent.putExtra(Intent.EXTRA_STREAM, outputUri);
+                        sendIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
                         sendIntent.setType("text/plain");
+                        sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
+                            List<ResolveInfo> resInfoList = context.getPackageManager().queryIntentActivities(sendIntent, PackageManager.MATCH_DEFAULT_ONLY);
+                            for (ResolveInfo resolveInfo : resInfoList) {
+                                String packageName = resolveInfo.activityInfo.packageName;
+                                context.grantUriPermission(packageName, fileUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            }
+                        }
                         context.startActivity(Intent.createChooser(sendIntent,
                                 context.getResources().getText(R.string.send_label)));
                     });
@@ -489,7 +501,7 @@ public class PreferenceController implements SharedPreferences.OnSharedPreferenc
                     alert.setTitle(R.string.export_error_label);
                     alert.setMessage(error.getMessage());
                     alert.show();
-                }, () -> progressDialog.dismiss());
+                }, progressDialog::dismiss);
         return true;
     }
 
@@ -752,6 +764,10 @@ public class PreferenceController implements SharedPreferences.OnSharedPreferenc
         }
     }
 
+    private static String blankIfNull(String val) {
+        return val == null ? "" : val;
+    }
+
     private void buildAutodownloadSelectedNetworsPreference() {
         final Activity activity = ui.getActivity();
 
@@ -759,64 +775,60 @@ public class PreferenceController implements SharedPreferences.OnSharedPreferenc
             clearAutodownloadSelectedNetworsPreference();
         }
         // get configured networks
-        WifiManager wifiservice = (WifiManager) activity.getSystemService(Context.WIFI_SERVICE);
+        WifiManager wifiservice = (WifiManager) activity.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         List<WifiConfiguration> networks = wifiservice.getConfiguredNetworks();
 
-        if (networks != null) {
-            Collections.sort(networks, new Comparator<WifiConfiguration>() {
-                @Override
-                public int compare(WifiConfiguration x, WifiConfiguration y) {
-                    return x.SSID.compareTo(y.SSID);
-                }
-            });
-            selectedNetworks = new CheckBoxPreference[networks.size()];
-            List<String> prefValues = Arrays.asList(UserPreferences
-                    .getAutodownloadSelectedNetworks());
-            PreferenceScreen prefScreen = (PreferenceScreen) ui.findPreference(PreferenceController.AUTO_DL_PREF_SCREEN);
-            Preference.OnPreferenceClickListener clickListener = preference -> {
-                if (preference instanceof CheckBoxPreference) {
-                    String key = preference.getKey();
-                    List<String> prefValuesList = new ArrayList<>(
-                            Arrays.asList(UserPreferences
-                                    .getAutodownloadSelectedNetworks())
-                    );
-                    boolean newValue = ((CheckBoxPreference) preference)
-                            .isChecked();
-                    Log.d(TAG, "Selected network " + key + ". New state: " + newValue);
-
-                    int index = prefValuesList.indexOf(key);
-                    if (index >= 0 && !newValue) {
-                        // remove network
-                        prefValuesList.remove(index);
-                    } else if (index < 0 && newValue) {
-                        prefValuesList.add(key);
-                    }
-
-                    UserPreferences.setAutodownloadSelectedNetworks(
-                            prefValuesList.toArray(new String[prefValuesList.size()])
-                    );
-                    return true;
-                } else {
-                    return false;
-                }
-            };
-            // create preference for each known network. attach listener and set
-            // value
-            for (int i = 0; i < networks.size(); i++) {
-                WifiConfiguration config = networks.get(i);
-
-                CheckBoxPreference pref = new CheckBoxPreference(activity);
-                String key = Integer.toString(config.networkId);
-                pref.setTitle(config.SSID);
-                pref.setKey(key);
-                pref.setOnPreferenceClickListener(clickListener);
-                pref.setPersistent(false);
-                pref.setChecked(prefValues.contains(key));
-                selectedNetworks[i] = pref;
-                prefScreen.addPreference(pref);
-            }
-        } else {
+        if (networks == null) {
             Log.e(TAG, "Couldn't get list of configure Wi-Fi networks");
+            return;
+        }
+        Collections.sort(networks, (x, y) ->
+                blankIfNull(x.SSID).compareTo(blankIfNull(y.SSID)));
+        selectedNetworks = new CheckBoxPreference[networks.size()];
+        List<String> prefValues = Arrays.asList(UserPreferences
+                .getAutodownloadSelectedNetworks());
+        PreferenceScreen prefScreen = (PreferenceScreen) ui.findPreference(PreferenceController.AUTO_DL_PREF_SCREEN);
+        Preference.OnPreferenceClickListener clickListener = preference -> {
+            if (preference instanceof CheckBoxPreference) {
+                String key = preference.getKey();
+                List<String> prefValuesList = new ArrayList<>(
+                        Arrays.asList(UserPreferences
+                                .getAutodownloadSelectedNetworks())
+                );
+                boolean newValue = ((CheckBoxPreference) preference)
+                        .isChecked();
+                Log.d(TAG, "Selected network " + key + ". New state: " + newValue);
+
+                int index = prefValuesList.indexOf(key);
+                if (index >= 0 && !newValue) {
+                    // remove network
+                    prefValuesList.remove(index);
+                } else if (index < 0 && newValue) {
+                    prefValuesList.add(key);
+                }
+
+                UserPreferences.setAutodownloadSelectedNetworks(
+                        prefValuesList.toArray(new String[prefValuesList.size()])
+                );
+                return true;
+            } else {
+                return false;
+            }
+        };
+        // create preference for each known network. attach listener and set
+        // value
+        for (int i = 0; i < networks.size(); i++) {
+            WifiConfiguration config = networks.get(i);
+
+            CheckBoxPreference pref = new CheckBoxPreference(activity);
+            String key = Integer.toString(config.networkId);
+            pref.setTitle(config.SSID);
+            pref.setKey(key);
+            pref.setOnPreferenceClickListener(clickListener);
+            pref.setPersistent(false);
+            pref.setChecked(prefValues.contains(key));
+            selectedNetworks[i] = pref;
+            prefScreen.addPreference(pref);
         }
     }
 
@@ -918,67 +930,14 @@ public class PreferenceController implements SharedPreferences.OnSharedPreferenc
     }
 
     private void showChooseDataFolderDialog() {
-        Context context = ui.getActivity();
-        File dataFolder =  UserPreferences.getDataFolder(null);
-        if(dataFolder == null) {
-            new MaterialDialog.Builder(ui.getActivity())
-                    .title(R.string.error_label)
-                    .content(R.string.external_storage_error_msg)
-                    .neutralText(android.R.string.ok)
-                    .show();
-            return;
-        }
-        String dataFolderPath = dataFolder.getAbsolutePath();
-        int selectedIndex = -1;
-        File[] mediaDirs = ContextCompat.getExternalFilesDirs(context, null);
-        List<String> folders = new ArrayList<>(mediaDirs.length);
-        List<CharSequence> choices = new ArrayList<>(mediaDirs.length);
-        for(int i=0; i < mediaDirs.length; i++) {
-            File dir = mediaDirs[i];
-            if(dir == null || !dir.exists() || !dir.canRead() || !dir.canWrite()) {
-                continue;
-            }
-            String path = mediaDirs[i].getAbsolutePath();
-            folders.add(path);
-            if(dataFolderPath.equals(path)) {
-                selectedIndex = i;
-            }
-            int index = path.indexOf("Android");
-            String choice;
-            if(index >= 0) {
-                choice = path.substring(0, index);
-            } else {
-                choice = path;
-            }
-            long bytes = StorageUtils.getFreeSpaceAvailable(path);
-            String freeSpace = String.format(context.getString(R.string.free_space_label),
-                    Converter.byteToString(bytes));
-            choices.add(Html.fromHtml("<html><small>" + choice
-                    + " [" + freeSpace + "]" + "</small></html>"));
-        }
-        if(choices.size() == 0) {
-            new MaterialDialog.Builder(ui.getActivity())
-                    .title(R.string.error_label)
-                    .content(R.string.external_storage_error_msg)
-                    .neutralText(android.R.string.ok)
-                    .show();
-            return;
-        }
-        MaterialDialog dialog = new MaterialDialog.Builder(ui.getActivity())
-                .title(R.string.choose_data_directory)
-                .content(R.string.choose_data_directory_message)
-                .items(choices.toArray(new CharSequence[choices.size()]))
-                .itemsCallbackSingleChoice(selectedIndex, (dialog1, itemView, which, text) -> {
-                    String folder = folders.get(which);
-                    Log.d(TAG, "data folder: " + folder);
-                    UserPreferences.setDataFolder(folder);
-                    setDataFolderText();
-                    return true;
-                })
-                .negativeText(R.string.cancel_label)
-                .cancelable(true)
-                .build();
-        dialog.show();
+        ChooseDataFolderDialog.showDialog(
+                ui.getActivity(), new ChooseDataFolderDialog.RunnableWithString() {
+                    @Override
+                    public void run(final String folder) {
+                        UserPreferences.setDataFolder(folder);
+                        setDataFolderText();
+                    }
+                });
     }
 
     // UPDATE TIME/INTERVAL DIALOG

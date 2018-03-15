@@ -7,6 +7,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.view.WindowCompat;
+import android.support.v7.app.ActionBar;
 import android.util.Log;
 import android.util.Pair;
 import android.view.MotionEvent;
@@ -45,7 +46,7 @@ public class VideoplayerActivity extends MediaplayerActivity {
 
     private VideoControlsHider videoControlsHider = new VideoControlsHider(this);
 
-    private AtomicBoolean isSetup = new AtomicBoolean(false);
+    private final AtomicBoolean isSetup = new AtomicBoolean(false);
 
     private LinearLayout controls;
     private LinearLayout videoOverlay;
@@ -152,16 +153,9 @@ public class VideoplayerActivity extends MediaplayerActivity {
 
     @Override
     protected void onAwaitingVideoSurface() {
+        setupVideoAspectRatio();
         if (videoSurfaceCreated && controller != null) {
             Log.d(TAG, "Videosurface already created, setting videosurface now");
-
-            Pair<Integer, Integer> videoSize = controller.getVideoSize();
-            if (videoSize != null && videoSize.first > 0 && videoSize.second > 0) {
-                Log.d(TAG, "Width,height of video: " + videoSize.first + ", " + videoSize.second);
-                videoview.setVideoSize(videoSize.first, videoSize.second);
-            } else {
-                Log.e(TAG, "Could not determine video size");
-            }
             controller.setVideoSurface(videoview.getHolder());
         }
     }
@@ -180,7 +174,7 @@ public class VideoplayerActivity extends MediaplayerActivity {
         progressIndicator.setVisibility(View.INVISIBLE);
     }
 
-    View.OnTouchListener onVideoviewTouched = (v, event) -> {
+    private final View.OnTouchListener onVideoviewTouched = (v, event) -> {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             videoControlsHider.stop();
             toggleVideoControlsVisibility();
@@ -194,9 +188,21 @@ public class VideoplayerActivity extends MediaplayerActivity {
     };
 
     @SuppressLint("NewApi")
-    void setupVideoControlsToggler() {
+    private void setupVideoControlsToggler() {
         videoControlsHider.stop();
         videoControlsHider.start();
+    }
+
+    private void setupVideoAspectRatio() {
+        if (videoSurfaceCreated && controller != null) {
+            Pair<Integer, Integer> videoSize = controller.getVideoSize();
+            if (videoSize != null && videoSize.first > 0 && videoSize.second > 0) {
+                Log.d(TAG, "Width,height of video: " + videoSize.first + ", " + videoSize.second);
+                videoview.setVideoSize(videoSize.first, videoSize.second);
+            } else {
+                Log.e(TAG, "Could not determine video size");
+            }
+        }
     }
 
     private void toggleVideoControlsVisibility() {
@@ -247,7 +253,7 @@ public class VideoplayerActivity extends MediaplayerActivity {
                     Log.e(TAG, "Couldn't attach surface to mediaplayer - reference to service was null");
                 }
             }
-
+            setupVideoAspectRatio();
         }
 
         @Override
@@ -350,18 +356,21 @@ public class VideoplayerActivity extends MediaplayerActivity {
 
         private WeakReference<VideoplayerActivity> activity;
 
-        public VideoControlsHider(VideoplayerActivity activity) {
+        VideoControlsHider(VideoplayerActivity activity) {
             this.activity = new WeakReference<>(activity);
         }
 
         private final Runnable hideVideoControls = () -> {
-            VideoplayerActivity vpa = activity.get();
+            VideoplayerActivity vpa = activity != null ? activity.get() : null;
             if(vpa == null) {
                 return;
             }
             if (vpa.videoControlsShowing) {
                 Log.d(TAG, "Hiding video controls");
-                vpa.getSupportActionBar().hide();
+                ActionBar actionBar = vpa.getSupportActionBar();
+                if (actionBar != null) {
+                    actionBar.hide();
+                }
                 vpa.hideVideoControls();
                 vpa.videoControlsShowing = false;
             }
@@ -371,7 +380,7 @@ public class VideoplayerActivity extends MediaplayerActivity {
             this.postDelayed(hideVideoControls, DELAY);
         }
 
-        public void stop() {
+        void stop() {
             this.removeCallbacks(hideVideoControls);
         }
 

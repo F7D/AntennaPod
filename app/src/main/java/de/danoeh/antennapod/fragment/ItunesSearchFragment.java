@@ -75,7 +75,7 @@ public class ItunesSearchFragment extends Fragment {
      * Replace adapter data with provided search results from SearchTask.
      * @param result List of Podcast objects containing search results
      */
-    void updateData(List<Podcast> result) {
+    private void updateData(List<Podcast> result) {
         this.searchResults = result;
         adapter.clear();
         if (result != null && result.size() > 0) {
@@ -116,6 +116,9 @@ public class ItunesSearchFragment extends Fragment {
         //Show information about the podcast when the list item is clicked
         gridView.setOnItemClickListener((parent, view1, position, id) -> {
             Podcast podcast = searchResults.get(position);
+            if(podcast.feedUrl == null) {
+                return;
+            }
             if (!podcast.feedUrl.contains("itunes.apple.com")) {
                 Intent intent = new Intent(getActivity(), OnlineFeedViewActivity.class);
                 intent.putExtra(OnlineFeedViewActivity.ARG_FEEDURL, podcast.feedUrl);

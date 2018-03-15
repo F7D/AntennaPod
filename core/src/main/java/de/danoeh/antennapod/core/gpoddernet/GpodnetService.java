@@ -1,6 +1,7 @@
 package de.danoeh.antennapod.core.gpoddernet;
 
 import android.support.annotation.NonNull;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -568,7 +569,9 @@ public class GpodnetService {
             e.printStackTrace();
             throw new GpodnetServiceException(e);
         } finally {
-            body.close();
+            if (body != null) {
+                body.close();
+            }
         }
         return responseString;
     }

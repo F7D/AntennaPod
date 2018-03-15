@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityOptionsCompat;
 import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.Menu;
@@ -66,19 +67,19 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
     private static final String PREFS = "MediaPlayerActivityPreferences";
     private static final String PREF_SHOW_TIME_LEFT = "showTimeLeft";
 
-    protected PlaybackController controller;
+    PlaybackController controller;
 
-    protected TextView txtvPosition;
-    protected TextView txtvLength;
-    protected SeekBar sbPosition;
-    protected ImageButton butRev;
-    protected TextView txtvRev;
-    protected ImageButton butPlay;
-    protected ImageButton butFF;
-    protected TextView txtvFF;
-    protected ImageButton butSkip;
+    private TextView txtvPosition;
+    private TextView txtvLength;
+    SeekBar sbPosition;
+    private ImageButton butRev;
+    private TextView txtvRev;
+    private ImageButton butPlay;
+    private ImageButton butFF;
+    private TextView txtvFF;
+    private ImageButton butSkip;
 
-    protected boolean showTimeLeft = false;
+    private boolean showTimeLeft = false;
 
     private boolean isFavorite = false;
 
@@ -183,31 +184,31 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
         };
     }
 
-    protected static TextView getTxtvFFFromActivity(MediaplayerActivity activity) {
+    private static TextView getTxtvFFFromActivity(MediaplayerActivity activity) {
         return activity.txtvFF;
     }
-    protected static TextView getTxtvRevFromActivity(MediaplayerActivity activity) {
+    private static TextView getTxtvRevFromActivity(MediaplayerActivity activity) {
         return activity.txtvRev;
     }
 
-    protected void onSetSpeedAbilityChanged() {
+    private void onSetSpeedAbilityChanged() {
         Log.d(TAG, "onSetSpeedAbilityChanged()");
         updatePlaybackSpeedButton();
     }
 
-    protected void onPlaybackSpeedChange() {
+    private void onPlaybackSpeedChange() {
         updatePlaybackSpeedButtonText();
     }
 
-    protected void onServiceQueried() {
+    private void onServiceQueried() {
         supportInvalidateOptionsMenu();
     }
 
-    protected void chooseTheme() {
+    void chooseTheme() {
         setTheme(UserPreferences.getTheme());
     }
 
-    protected void setScreenOn(boolean enable) {
+    void setScreenOn(boolean enable) {
     }
 
     @Override
@@ -248,7 +249,7 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
      */
     protected abstract void onBufferEnd();
 
-    protected void onBufferUpdate(float progress) {
+    private void onBufferUpdate(float progress) {
         if (sbPosition != null) {
             sbPosition.setSecondaryProgress((int) progress * sbPosition.getMax());
         }
@@ -257,7 +258,7 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
     /**
      * Current screen orientation.
      */
-    protected int orientation;
+    private int orientation;
 
     @Override
     protected void onStart() {
@@ -309,10 +310,9 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
             return false;
         }
         Playable media = controller.getMedia();
+        boolean isFeedMedia = media != null && (media instanceof FeedMedia);
 
-        menu.findItem(R.id.support_item).setVisible(
-                media != null && media.getPaymentLink() != null &&
-                        (media instanceof FeedMedia) &&
+        menu.findItem(R.id.support_item).setVisible(isFeedMedia && media.getPaymentLink() != null &&
                         ((FeedMedia) media).getItem() != null &&
                         ((FeedMedia) media).getItem().getFlattrStatus().flattrable()
         );
@@ -320,20 +320,21 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
         boolean hasWebsiteLink = media != null && media.getWebsiteLink() != null;
         menu.findItem(R.id.visit_website_item).setVisible(hasWebsiteLink);
 
-        boolean isItemAndHasLink = media != null && (media instanceof FeedMedia) &&
+        boolean isItemAndHasLink = isFeedMedia &&
                 ((FeedMedia) media).getItem() != null && ((FeedMedia) media).getItem().getLink() != null;
         menu.findItem(R.id.share_link_item).setVisible(isItemAndHasLink);
         menu.findItem(R.id.share_link_with_position_item).setVisible(isItemAndHasLink);
 
-        boolean isItemHasDownloadLink = media != null && (media instanceof FeedMedia) && ((FeedMedia) media).getDownload_url() != null;
+        boolean isItemHasDownloadLink = isFeedMedia && ((FeedMedia) media).getDownload_url() != null;
         menu.findItem(R.id.share_download_url_item).setVisible(isItemHasDownloadLink);
         menu.findItem(R.id.share_download_url_with_position_item).setVisible(isItemHasDownloadLink);
+        menu.findItem(R.id.share_file).setVisible(isFeedMedia && ((FeedMedia) media).fileExists());
 
         menu.findItem(R.id.share_item).setVisible(hasWebsiteLink || isItemAndHasLink || isItemHasDownloadLink);
 
         menu.findItem(R.id.add_to_favorites_item).setVisible(false);
         menu.findItem(R.id.remove_from_favorites_item).setVisible(false);
-        if(media != null && media instanceof FeedMedia) {
+        if (isFeedMedia) {
             menu.findItem(R.id.add_to_favorites_item).setVisible(!isFavorite);
             menu.findItem(R.id.remove_from_favorites_item).setVisible(isFavorite);
         }
@@ -368,7 +369,16 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
                     MainActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
                     | Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
+
+            View cover = findViewById(R.id.imgvCover);
+            if (cover != null && Build.VERSION.SDK_INT >= 16) {
+                ActivityOptionsCompat options = ActivityOptionsCompat.
+                        makeSceneTransitionAnimation(MediaplayerActivity.this,
+                        cover, "coverTransition");
+                startActivity(intent, options.toBundle());
+            } else {
+                startActivity(intent);
+            }
             return true;
         } else {
             if (media != null) {
@@ -574,6 +584,11 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
                             ShareUtils.shareFeedItemDownloadLink(this, ((FeedMedia) media).getItem(), true);
                         }
                         break;
+                    case R.id.share_file:
+                        if (media instanceof FeedMedia) {
+                            ShareUtils.shareFeedItemFile(this, ((FeedMedia) media));
+                        }
+                        break;
                     default:
                         return false;
                 }
@@ -604,7 +619,7 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
 
     protected abstract void clearStatusMsg();
 
-    protected void onPositionObserverUpdate() {
+    void onPositionObserverUpdate() {
         if (controller == null || txtvPosition == null || txtvLength == null) {
             return;
         }
@@ -640,7 +655,7 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
      * to the PlaybackService to ensure that the activity has the right
      * FeedMedia object.
      */
-    protected boolean loadMediaInfo() {
+    boolean loadMediaInfo() {
         Log.d(TAG, "loadMediaInfo()");
         if(controller == null || controller.getMedia() == null) {
             return false;
@@ -654,18 +669,18 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
         return true;
     }
 
-    protected void updatePlaybackSpeedButton() {
+    void updatePlaybackSpeedButton() {
         // Only meaningful on AudioplayerActivity, where it is overridden.
     }
 
-    protected void updatePlaybackSpeedButtonText() {
+    void updatePlaybackSpeedButtonText() {
         // Only meaningful on AudioplayerActivity, where it is overridden.
     }
 
     /**
      * Abstract directions to skip forward or back (rewind) and encapsulates behavior to get or set preference (including update of UI on the skip buttons).
      */
-    static public enum SkipDirection {
+    public enum SkipDirection {
         SKIP_FORWARD(
                 UserPreferences::getFastForwardSecs,
                 MediaplayerActivity::getTxtvFFFromActivity,
@@ -748,7 +763,7 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
         builder.create().show();
     }
 
-    protected void setupGUI() {
+    void setupGUI() {
         setContentView(getContentViewResourceId());
         sbPosition = (SeekBar) findViewById(R.id.sbPosition);
         txtvPosition = (TextView) findViewById(R.id.txtvPosition);
@@ -822,7 +837,7 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
         }
     }
 
-    protected void onRewind() {
+    void onRewind() {
         if (controller == null) {
             return;
         }
@@ -830,14 +845,14 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
         controller.seekTo(curr - UserPreferences.getRewindSecs() * 1000);
     }
 
-    protected void onPlayPause() {
+    void onPlayPause() {
         if(controller == null) {
             return;
         }
         controller.playPause();
     }
 
-    protected void onFastForward() {
+    void onFastForward() {
         if (controller == null) {
             return;
         }
@@ -847,7 +862,7 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
 
     protected abstract int getContentViewResourceId();
 
-    void handleError(int errorCode) {
+    private void handleError(int errorCode) {
         final AlertDialog.Builder errorDialog = new AlertDialog.Builder(this);
         errorDialog.setTitle(R.string.error_label);
         errorDialog.setMessage(MediaPlayerError.getErrorString(this, errorCode));
@@ -860,7 +875,7 @@ public abstract class MediaplayerActivity extends CastEnabledActivity implements
         errorDialog.create().show();
     }
 
-    float prog;
+    private float prog;
 
     @Override
     public void onProgressChanged (SeekBar seekBar,int progress, boolean fromUser) {

@@ -32,7 +32,7 @@ import de.danoeh.antennapod.core.util.playback.VideoPlayer;
  * Manages the MediaPlayer object of the PlaybackService.
  */
 public class LocalPSMP extends PlaybackServiceMediaPlayer {
-    public static final String TAG = "LclPlaybackSvcMPlayer";
+    private static final String TAG = "LclPlaybackSvcMPlayer";
 
     private final AudioManager audioManager;
 
@@ -42,7 +42,7 @@ public class LocalPSMP extends PlaybackServiceMediaPlayer {
 
     private volatile boolean stream;
     private volatile MediaType mediaType;
-    private volatile AtomicBoolean startWhenPrepared;
+    private final AtomicBoolean startWhenPrepared;
     private volatile boolean pausedBecauseOfTransientAudiofocusLoss;
     private volatile Pair<Integer, Integer> videoSize;
 
@@ -300,7 +300,7 @@ public class LocalPSMP extends PlaybackServiceMediaPlayer {
     /**
      * Called after media player has been prepared. This method is executed on the caller's thread.
      */
-    void onPrepared(final boolean startWhenPrepared) {
+    private void onPrepared(final boolean startWhenPrepared) {
         playerLock.lock();
 
         if (playerStatus != PlayerStatus.PREPARING) {
@@ -688,70 +688,71 @@ public class LocalPSMP extends PlaybackServiceMediaPlayer {
         media = playable;
     }
 
-    private IPlayer createMediaPlayer() {
+    private void createMediaPlayer() {
         if (mediaPlayer != null) {
             mediaPlayer.release();
         }
-        if (media == null || media.getMediaType() == MediaType.VIDEO) {
+        if(media == null) {
+            mediaPlayer = null;
+            return;
+        }
+        if (media.getMediaType() == MediaType.VIDEO) {
             mediaPlayer = new VideoPlayer();
         } else {
             mediaPlayer = new AudioPlayer(context);
         }
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
         mediaPlayer.setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK);
-        return setMediaPlayerListeners(mediaPlayer);
+        setMediaPlayerListeners(mediaPlayer);
     }
 
     private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
 
         @Override
         public void onAudioFocusChange(final int focusChange) {
-            executor.submit(new Runnable() {
-                @Override
-                public void run() {
-                    playerLock.lock();
+            executor.submit(() -> {
+                playerLock.lock();
 
-                    // If there is an incoming call, playback should be paused permanently
-                    TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-                    final int callState = (tm != null) ? tm.getCallState() : 0;
-                    Log.i(TAG, "Call state:" + callState);
+                // If there is an incoming call, playback should be paused permanently
+                TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+                final int callState = (tm != null) ? tm.getCallState() : 0;
+                Log.i(TAG, "Call state:" + callState);
 
-                    if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
-                            (!UserPreferences.shouldResumeAfterCall() && callState != TelephonyManager.CALL_STATE_IDLE)) {
-                        Log.d(TAG, "Lost audio focus");
-                        pause(true, false);
-                        callback.shouldStop();
-                    } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
-                        Log.d(TAG, "Gained audio focus");
-                        if (pausedBecauseOfTransientAudiofocusLoss) { // we paused => play now
-                            resume();
-                        } else { // we ducked => raise audio level back
-                            setVolumeSync(UserPreferences.getLeftVolume(),
-                                    UserPreferences.getRightVolume());
-                        }
-                    } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
-                        if (playerStatus == PlayerStatus.PLAYING) {
-                            if (!UserPreferences.shouldPauseForFocusLoss()) {
-                                Log.d(TAG, "Lost audio focus temporarily. Ducking...");
-                                final float DUCK_FACTOR = 0.25f;
-                                setVolumeSync(DUCK_FACTOR * UserPreferences.getLeftVolume(),
-                                        DUCK_FACTOR * UserPreferences.getRightVolume());
-                                pausedBecauseOfTransientAudiofocusLoss = false;
-                            } else {
-                                Log.d(TAG, "Lost audio focus temporarily. Could duck, but won't, pausing...");
-                                pause(false, false);
-                                pausedBecauseOfTransientAudiofocusLoss = true;
-                            }
-                        }
-                    } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
-                        if (playerStatus == PlayerStatus.PLAYING) {
-                            Log.d(TAG, "Lost audio focus temporarily. Pausing...");
+                if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
+                        (!UserPreferences.shouldResumeAfterCall() && callState != TelephonyManager.CALL_STATE_IDLE)) {
+                    Log.d(TAG, "Lost audio focus");
+                    pause(true, false);
+                    callback.shouldStop();
+                } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
+                    Log.d(TAG, "Gained audio focus");
+                    if (pausedBecauseOfTransientAudiofocusLoss) { // we paused => play now
+                        resume();
+                    } else { // we ducked => raise audio level back
+                        setVolumeSync(UserPreferences.getLeftVolume(),
+                                UserPreferences.getRightVolume());
+                    }
+                } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+                    if (playerStatus == PlayerStatus.PLAYING) {
+                        if (!UserPreferences.shouldPauseForFocusLoss()) {
+                            Log.d(TAG, "Lost audio focus temporarily. Ducking...");
+                            final float DUCK_FACTOR = 0.25f;
+                            setVolumeSync(DUCK_FACTOR * UserPreferences.getLeftVolume(),
+                                    DUCK_FACTOR * UserPreferences.getRightVolume());
+                            pausedBecauseOfTransientAudiofocusLoss = false;
+                        } else {
+                            Log.d(TAG, "Lost audio focus temporarily. Could duck, but won't, pausing...");
                             pause(false, false);
                             pausedBecauseOfTransientAudiofocusLoss = true;
                         }
                     }
-                    playerLock.unlock();
+                } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+                    if (playerStatus == PlayerStatus.PLAYING) {
+                        Log.d(TAG, "Lost audio focus temporarily. Pausing...");
+                        pause(false, false);
+                        pausedBecauseOfTransientAudiofocusLoss = true;
+                    }
                 }
+                playerLock.unlock();
             });
         }
     };
@@ -855,14 +856,20 @@ public class LocalPSMP extends PlaybackServiceMediaPlayer {
         if (mp == null || media == null) {
             return mp;
         }
-        if (media.getMediaType() == MediaType.VIDEO) {
+        if (mp instanceof VideoPlayer) {
+            if (media.getMediaType() != MediaType.VIDEO) {
+                Log.w(TAG, "video player, but media type is " + media.getMediaType());
+            }
             VideoPlayer vp = (VideoPlayer) mp;
             vp.setOnCompletionListener(videoCompletionListener);
             vp.setOnSeekCompleteListener(videoSeekCompleteListener);
             vp.setOnErrorListener(videoErrorListener);
             vp.setOnBufferingUpdateListener(videoBufferingUpdateListener);
             vp.setOnInfoListener(videoInfoListener);
-        } else {
+        } else if (mp instanceof AudioPlayer) {
+            if (media.getMediaType() != MediaType.AUDIO) {
+                Log.w(TAG, "audio player, but media type is " + media.getMediaType());
+            }
             AudioPlayer ap = (AudioPlayer) mp;
             ap.setOnCompletionListener(audioCompletionListener);
             ap.setOnSeekCompleteListener(audioSeekCompleteListener);
@@ -870,6 +877,8 @@ public class LocalPSMP extends PlaybackServiceMediaPlayer {
             ap.setOnBufferingUpdateListener(audioBufferingUpdateListener);
             ap.setOnInfoListener(audioInfoListener);
             ap.setOnSpeedAdjustmentAvailableChangedListener(audioSetSpeedAbilityListener);
+        } else {
+            Log.w(TAG, "Unknown media player: " + mp);
         }
         return mp;
     }

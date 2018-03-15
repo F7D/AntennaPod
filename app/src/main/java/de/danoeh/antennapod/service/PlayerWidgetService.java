@@ -17,6 +17,7 @@ import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.activity.MainActivity;
 import de.danoeh.antennapod.core.feed.FeedItem;
 import de.danoeh.antennapod.core.feed.FeedMedia;
+import de.danoeh.antennapod.core.preferences.UserPreferences;
 import de.danoeh.antennapod.core.receiver.MediaButtonReceiver;
 import de.danoeh.antennapod.core.service.playback.PlaybackService;
 import de.danoeh.antennapod.core.service.playback.PlayerStatus;
@@ -37,7 +38,7 @@ public class PlayerWidgetService extends Service {
     /**
      * Controls write access to playbackservice reference
      */
-    private Object psLock;
+    private final Object psLock = new Object();
 
     /**
      * True while service is updating the widget
@@ -52,7 +53,6 @@ public class PlayerWidgetService extends Service {
         super.onCreate();
         Log.d(TAG, "Service created");
         isUpdating = false;
-        psLock = new Object();
     }
 
     @Override
@@ -69,7 +69,8 @@ public class PlayerWidgetService extends Service {
                     DBWriter.markItemPlayed(item, FeedItem.PLAYED, false);
                     DBWriter.removeQueueItem(this, item, false);
                     DBWriter.addItemToPlaybackHistory(media);
-                    if (item.getFeed().getPreferences().getCurrentAutoDelete()) {
+                    if (item.getFeed().getPreferences().getCurrentAutoDelete() &&
+                            (!item.isTagged(FeedItem.TAG_FAVORITE) || !UserPreferences.shouldFavoriteKeepEpisode())) {
                         Log.d(TAG, "Delete " + media.toString());
                         DBWriter.deleteFeedMediaOfItem(this, media.getId());
                     }
@@ -192,7 +193,7 @@ public class PlayerWidgetService extends Service {
         }
     }
 
-    private ServiceConnection mConnection = new ServiceConnection() {
+    private final ServiceConnection mConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
             Log.d(TAG, "Connection to service established");
             synchronized (psLock) {
@@ -222,7 +223,7 @@ public class PlayerWidgetService extends Service {
 
     class ViewUpdater extends Thread {
         private static final String THREAD_NAME = "ViewUpdater";
-        private PlayerWidgetService service;
+        private final PlayerWidgetService service;
 
         public ViewUpdater(PlayerWidgetService service) {
             super();

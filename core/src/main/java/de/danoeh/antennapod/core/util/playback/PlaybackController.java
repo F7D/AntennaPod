@@ -87,13 +87,7 @@ public abstract class PlaybackController {
                     Thread t = new Thread(r);
                     t.setPriority(Thread.MIN_PRIORITY);
                     return t;
-                }, new RejectedExecutionHandler() {
-            @Override
-            public void rejectedExecution(Runnable r,
-                                          ThreadPoolExecutor executor) {
-                Log.w(TAG, "Rejected execution of runnable in schedExecutor");
-            }
-        }
+                }, (r, executor) -> Log.w(TAG, "Rejected execution of runnable in schedExecutor")
         );
     }
 
@@ -461,6 +455,7 @@ public abstract class PlaybackController {
                 checkMediaInfoLoaded();
                 postStatusMsg(R.string.player_ready_msg, false);
                 updatePlayButtonAppearance(playResource, playText);
+                onPositionObserverUpdate();
                 break;
             case SEEKING:
                 onPositionObserverUpdate();
