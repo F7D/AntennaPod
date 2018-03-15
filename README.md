@@ -38,13 +38,13 @@
 
 
 <br>
-[<img src="https://github.com/F7D/AntennaPod/blob/master/screen/1.PNG"
+[<img src="https://github.com/F7D/AntennaPod/blob/develop/screen/1.PNG"
       alt="welcome"
       height="100%">](https://github.com/F7D/AntennaPod)
-[<img src="https://github.com/F7D/AntennaPod/blob/master/screen/2.PNG"
+[<img src="https://github.com/F7D/AntennaPod/blob/develop/screen/2.PNG"
       alt="welcome"
       height="100%">](https://github.com/F7D/AntennaPod)
-[<img src="https://github.com/F7D/AntennaPod/blob/master/screen/3.PNG"
+[<img src="https://github.com/F7D/AntennaPod/blob/develop/screen/3.PNG"
       alt="welcome"
       height="100%">](https://github.com/F7D/AntennaPod)
 	 <br> 
